@@ -986,8 +986,7 @@
       
       lucide.createIcons();
     }
-
-    function loadStudentEvalForm() {
+function loadStudentEvalForm() {
   // FIX: Đổi role từ 'student' thành 'hocsinh' cho đúng toàn hệ thống
   if (currentRole !== 'hocsinh' || !loggedInUser) return;
   const month = document.getElementById('student-eval-month').value;
@@ -1077,7 +1076,7 @@
 
   lucide.createIcons();
 }
-
+    
       // 2. Tính toán lỗi tự động do hệ thống ép buộc
       autoFilledViolations = { sec1: {}, sec2: {} };
       EVAL_RULES.section1.forEach(item => { autoFilledViolations.sec1[item.id] = 0; });

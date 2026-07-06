@@ -988,29 +988,95 @@
     }
 
     function loadStudentEvalForm() {
-      if (currentRole !== 'student' || !loggedInUser) return;
-      
-      const month = document.getElementById('student-eval-month').value;
-      const s = loggedInUser;
+  // FIX: Đổi role từ 'student' thành 'hocsinh' cho đúng toàn hệ thống
+  if (currentRole !== 'hocsinh' || !loggedInUser) return;
+  const month = document.getElementById('student-eval-month').value;
+  const s = loggedInUser;
 
-      // 1. Lọc toàn bộ vi phạm của học sinh này trong tháng được chọn
-      const stViolations = violations.filter(v => v.studentName === s.name && v.studentClass === s.class && String(v.month) === String(month));
-      
-      // Hiển thị lịch sử vi phạm tháng lên UI
-      const violContainer = document.getElementById('student-active-violations');
-      if (stViolations.length === 0) {
-        violContainer.innerHTML = `<div class="text-xs text-emerald-400 font-semibold italic p-2 bg-emerald-950/20 rounded">Không có vi phạm nào bị ghi nhận trong tháng này.</div>`;
-      } else {
-        violContainer.innerHTML = stViolations.map(v => `
-          <div class="bg-red-950/30 border border-red-500/20 p-2.5 rounded-lg flex justify-between items-center mb-1.5">
-            <div>
-              <span class="font-bold text-red-400 text-xs">${v.ruleName}</span>
-              <span class="text-slate-400 text-[10px] block mt-0.5"><i data-lucide="calendar" class="w-3 h-3 inline pb-0.5"></i> ${new Date(v.date).toLocaleDateString('vi-VN')} (Tuần ${v.week})</span>
-            </div>
-            <strong class="text-red-400 font-black shrink-0 bg-red-500/10 px-2 py-1 rounded">-${v.points}đ</strong>
-          </div>
-        `).join('');
+  // 1) Lọc chính xác vi phạm tháng hiện tại của học sinh đăng nhập
+  const stViolations = violations.filter(v => 
+    String(v.studentName || '').trim() === String(s.name || '').trim() && 
+    String(v.studentClass || '').trim() === String(s.class || '').trim() && 
+    String(v.month) === String(month)
+  );
+
+  // Hiển thị lịch sử vi phạm lên giao diện UI
+  const violContainer = document.getElementById('student-active-violations');
+  if (stViolations.length === 0) {
+    violContainer.innerHTML = `<div class="text-xs text-emerald-400 font-semibold italic p-2 bg-emerald-950/20 rounded">Không có vi phạm nào bị ghi nhận trong tháng này.</div>`;
+  } else {
+    violContainer.innerHTML = stViolations.map(v => `
+      <div class="bg-red-950/30 border border-red-500/20 p-2.5 rounded-lg flex justify-between items-center mb-1.5">
+        <div>
+          <span class="font-bold text-red-400 text-xs">${v.ruleName}</span>
+          <span class="text-slate-400 text-[10px] block mt-0.5"><i data-lucide="calendar" class="w-3 h-3 inline pb-0.5"></i> ${new Date(v.date).toLocaleDateString('vi-VN')} (Tuần ${v.week})</span>
+        </div>
+        <strong class="text-red-400 font-black shrink-0 bg-red-500/10 px-2 py-1 rounded">- ${v.points} đ</strong>
+      </div>
+    `).join('');
+  }
+
+  // Tự động tính toán điểm trừ từ lỗi vi phạm ghi nhận
+  autoFilledViolations = { sec1: {}, sec2: {} };
+  EVAL_RULES.section1.forEach(item => { autoFilledViolations.sec1[item.id] = 0; });
+  EVAL_RULES.section2.forEach(item => { autoFilledViolations.sec2[item.id] = false; });
+
+  stViolations.forEach(v => {
+    const ruleNameLower = String(v.ruleName || '').toLowerCase();
+    EVAL_RULES.section1.forEach(item => {
+      if (item.keywords.some(k => ruleNameLower.includes(String(k).toLowerCase()))) {
+        autoFilledViolations.sec1[item.id]++;
       }
+    });
+    EVAL_RULES.section2.forEach(item => {
+      if (item.keywords.some(k => ruleNameLower.includes(String(k).toLowerCase()))) {
+        autoFilledViolations.sec2[item.id] = true;
+      }
+    });
+  });
+
+  // Tìm phiếu đánh giá: Ưu tiên match theo studentId, fallback theo Tên + Lớp
+  const savedEval = evaluations.find(ev => {
+    const sameMonth = String(ev.month) === String(month);
+    const hasEvId = ev.studentId !== undefined && ev.studentId !== null && String(ev.studentId).trim() !== '';
+    const hasUserId = s.studentId !== undefined && s.studentId !== null && String(s.studentId).trim() !== '';
+    const matchById = hasEvId && hasUserId && String(ev.studentId).trim() === String(s.studentId).trim();
+    const matchByNameClass = String(ev.studentName || '').trim() === String(s.name || '').trim() && String(ev.studentClass || '').trim() === String(s.class || '').trim();
+    return sameMonth && (matchById || matchByNameClass);
+  });
+
+  let userSec1Counts = {};
+  let userSec2Checks = {};
+  if (savedEval) {
+    document.getElementById('student-eval-note').value = savedEval.studentNote || '';
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById(`reward-${i}`).value = savedEval.rewards?.[`r${i}`] || 0;
+    }
+    userSec1Counts = savedEval.section1Counts || {};
+    userSec2Checks = savedEval.section2Checks || {};
+  } else {
+    document.getElementById('student-eval-note').value = '';
+    for (let i = 1; i <= 5; i++) document.getElementById(`reward-${i}`).value = 0;
+    userSec1Counts = { ...autoFilledViolations.sec1 };
+    userSec2Checks = { ...autoFilledViolations.sec2 };
+  }
+
+  buildEvalInputs(userSec1Counts, userSec2Checks);
+  recalculateLiveScore();
+
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById(`reward-${i}`).oninput = recalculateLiveScore;
+  }
+
+  // FIX LOGIC: Chỉ hiển thị toast thông báo khi trạng thái thực sự là Chờ duyệt hoặc Đã duyệt
+  const submittedStatuses = ['Chờ duyệt', 'Đã duyệt'];
+  const isActuallySubmitted = !!savedEval && submittedStatuses.includes(savedEval.status);
+  if (isActuallySubmitted) {
+    showToast(`ℹ Phiếu tháng ${month} của bạn đang ở trạng thái: ${savedEval.status}`);
+  }
+
+  lucide.createIcons();
+}
 
       // 2. Tính toán lỗi tự động do hệ thống ép buộc
       autoFilledViolations = { sec1: {}, sec2: {} };
@@ -1065,40 +1131,58 @@
     }
 
     function recalculateLiveScore() {
-      if (currentRole !== 'student' || !loggedInUser) return;
-      
-      let section1Counts = {};
-      let section2Checks = {};
+  // FIX: Đổi role check thành 'hocsinh'
+  if (currentRole !== 'hocsinh' || !loggedInUser) return;
+  let section1Counts = {};
+  let section2Checks = {};
 
-      // Lấy giá trị từ các input người dùng đã nhập, đảm bảo không thấp hơn autoFill
-      EVAL_RULES.section1.forEach(item => { 
-        const inputEl = document.getElementById(`input-${item.id}`);
-        let val = parseInt(inputEl?.value) || 0;
-        const autoCount = autoFilledViolations.sec1[item.id] || 0;
-        if (val < autoCount) {
-          val = autoCount;
-          if(inputEl) inputEl.value = autoCount; // Force reset if user tries to lower
-        }
-        section1Counts[item.id] = val; 
-      });
-      
-      EVAL_RULES.section2.forEach(item => { 
-        const checkEl = document.getElementById(`check-${item.id}`);
-        let checked = checkEl?.checked || false;
-        if (autoFilledViolations.sec2[item.id]) {
-          checked = true; // Force true if auto-filled
-          if(checkEl) checkEl.checked = true;
-        }
-        section2Checks[item.id] = checked; 
-      });
+  EVAL_RULES.section1.forEach(item => {
+    const inputEl = document.getElementById(`input-${item.id}`);
+    let val = parseInt(inputEl?.value) || 0;
+    const autoCount = autoFilledViolations.sec1[item.id] || 0;
+    if (val < autoCount) {
+      val = autoCount;
+      if (inputEl) inputEl.value = autoCount;
+    }
+    section1Counts[item.id] = val; 
+  });
 
-      let rewards = {};
-      for (let i = 1; i <= 5; i++) {
-        rewards[`r${i}`] = parseInt(document.getElementById(`reward-${i}`).value) || 0;
-      }
+  EVAL_RULES.section2.forEach(item => {
+    const checkEl = document.getElementById(`check-${item.id}`);
+    let checked = checkEl?.checked || false;
+    if (autoFilledViolations.sec2[item.id]) {
+      checked = true;
+      if (checkEl) checkEl.checked = true;
+    }
+    section2Checks[item.id] = checked; 
+  });
 
-      const calc = computeEvaluationScore(section1Counts, section2Checks, rewards);
-      
+  let rewards = {};
+  for (let i = 1; i <= 5; i++) {
+    rewards[`r${i}`] = parseInt(document.getElementById(`reward-${i}`).value) || 0;
+  }
+
+  const calc = computeEvaluationScore(section1Counts, section2Checks, rewards);
+  const month = document.getElementById('student-eval-month').value;
+  const s = loggedInUser;
+
+  // Đồng bộ logic tìm kiếm phiếu giống hàm load để hiển thị trạng thái chính xác
+  const savedEval = evaluations.find(ev => {
+    const sameMonth = String(ev.month) === String(month);
+    const hasEvId = ev.studentId !== undefined && ev.studentId !== null && String(ev.studentId).trim() !== '';
+    const hasUserId = s.studentId !== undefined && s.studentId !== null && String(s.studentId).trim() !== '';
+    const matchById = hasEvId && hasUserId && String(ev.studentId).trim() === String(s.studentId).trim();
+    const matchByNameClass = String(ev.studentName || '').trim() === String(s.name || '').trim() && String(ev.studentClass || '').trim() === String(s.class || '').trim();
+    return sameMonth && (matchById || matchByNameClass);
+  });
+
+  // Chỉ hiển thị trạng thái đã nộp lên màn hình view khi đúng status
+  let statusStr = 'Đang soạn thảo';
+  if (savedEval && (savedEval.status === 'Chờ duyệt' || savedEval.status === 'Đã duyệt')) {
+    statusStr = savedEval.status;
+  }
+  updateLiveScoreView(calc.totalScore, calc.rating, calc.totalPenalty, calc.rewardSum, statusStr);
+}
       // Check for saved status
       const month = document.getElementById('student-eval-month').value;
       const s = loggedInUser;

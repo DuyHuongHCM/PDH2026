@@ -1,0 +1,153 @@
+/* style.css - Trich xuat tu Index.html */
+/* =====  PHAN 1: STYLE CHINH ===== */
+
+    * { font-family: 'Be Vietnam Pro', sans-serif; }
+    
+    /* Màu sắc theo khối lớp */
+    .grade-6 { background: #e0f2fe; border-left: 4px solid #0284c7; }
+    .grade-7 { background: #dcfce7; border-left: 4px solid #16a34a; }
+    .grade-8 { background: #fef3c7; border-left: 4px solid #d97706; }
+    .grade-9 { background: #fce7f3; border-left: 4px solid #db2777; }
+    
+    /* Thiết lập in ấn đặc biệt */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      #app, .no-print {
+        display: none !important;
+      }
+      #print-area {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .page-break {
+        page-break-after: always;
+        break-after: page;
+      }
+    }
+    @media screen {
+      #print-area {
+        display: none;
+      }
+    }
+
+    /* ===== CUSTOM WEEK CALENDAR PICKER ===== */
+    .week-calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      padding: 8px;
+    }
+    .week-calendar .cal-header {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #94a3b8;
+      padding: 4px 2px;
+    }
+    .week-calendar .cal-day {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+    .week-calendar .cal-day.valid-day {
+      background: rgba(99,102,241,0.15);
+      color: #a5b4fc;
+      border-color: rgba(99,102,241,0.3);
+    }
+    .week-calendar .cal-day.valid-day:hover {
+      background: rgba(99,102,241,0.35);
+      color: #fff;
+      transform: scale(1.08);
+      box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+    }
+    .week-calendar .cal-day.selected-day {
+      background: #4f46e5;
+      color: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 10px rgba(99,102,241,0.5);
+      font-weight: 900;
+    }
+    .week-calendar .cal-day.disabled-day {
+      background: rgba(30,41,59,0.5);
+      color: #334155;
+      cursor: not-allowed;
+    }
+    .week-calendar .cal-day.disabled-day:hover {
+      background: rgba(30,41,59,0.5);
+      transform: none;
+    }
+    .week-calendar .cal-day.weekend-day {
+      background: rgba(239,68,68,0.08);
+      color: #475569;
+      cursor: not-allowed;
+      border-color: rgba(239,68,68,0.1);
+    }
+    .week-calendar .cal-day.other-month {
+      opacity: 0.35;
+    }
+    .week-calendar .cal-day.today-marker {
+      border-color: rgba(52,211,153,0.5) !important;
+    }
+
+    /* Score change flash animation */
+    @keyframes scoreFlash {
+      0% { background-color: rgba(245,158,11,0.3); }
+      100% { background-color: transparent; }
+    }
+    .score-changed {
+      animation: scoreFlash 1.5s ease-out;
+      border-radius: 6px;
+    }
+    .score-up { color: #34d399 !important; }
+    .score-down { color: #f87171 !important; }
+
+/* ===== PHAN 2: BOX-SIZING ===== */
+body { box-sizing: border-box; }
+
+/* ===== PHAN 3: GIÁM THỊ MOBILE-FIRST ===== */
+.giamthi-quick-input {
+  font-size: 16px; /* Ngăn iOS auto-zoom */
+}
+.giamthi-btn {
+  min-height: 48px;
+}
+@media (max-width: 640px) {
+  .giamthi-quick-input {
+    font-size: 16px;
+    padding: 14px 16px;
+  }
+  .giamthi-btn {
+    min-height: 52px;
+    font-size: 15px;
+  }
+}
+
+/* ===== PHAN 4: LOGIN PORTAL ANIMATIONS ===== */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeSlideIn 0.5s ease-out forwards;
+}
+.login-card {
+  animation: fadeSlideIn 0.6s 0.1s ease-out both;
+}
+
+/* Smooth hover lift for action buttons */
+.hover\:-translate-y-0\.5:hover { transform: translateY(-2px); }
+.active\:translate-y-0:active   { transform: translateY(0); }
+
